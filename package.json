@@ -1,0 +1,21 @@
+{
+	"name": "pornjs-api",
+	"version": "1.0.0",
+	"main": "app.js",
+	"license": "MIT",
+	"dependencies": {
+		"axios": "^0.21.1",
+		"cheerio": "^1.0.0-rc.5",
+		"cors": "^2.8.5",
+		"dayjs": "^1.9.7",
+		"express": "^4.17.1",
+		"ffmpeg-extract-frame": "^1.0.2",
+		"get-video-dimensions": "^1.0.0",
+		"get-video-duration": "^3.0.2",
+		"joi": "^17.3.0",
+		"mariadb": "^2.5.2",
+		"node-fetch": "^2.6.1",
+		"rimraf": "^3.0.2",
+		"sharp": "^0.28.1"
+	}
+}
