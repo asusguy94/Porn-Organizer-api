@@ -1,6 +1,6 @@
 const mariaDB = require('mariadb')
 
-import config from './config.json'
+const config = require('./config.json')
 
 module.exports = {
 	db: (params = true) =>
