@@ -13,6 +13,10 @@
     2. Installed to the server and added to ENV
     3. Installed to the server in the root folder
 
+## About docker-image
+
+Using the `Dockerfile`, you can create a prebuilt version of the app. This version already contains _ffmpeg_ and _NodeJS_, so you only have to install your choice of _database_-system.
+
 ## Installation
 
 1. Edit config.json
