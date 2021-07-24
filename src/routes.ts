@@ -1,6 +1,8 @@
 import express, { Express } from 'express'
 import cors from 'cors'
 
+import errorHandler from './middleware/logger'
+
 // API Routes
 import home from './routes/api/home'
 import video from './routes/api/video'
@@ -46,4 +48,6 @@ export default (app: Express) => {
 
 	// Testing Path
 	app.use('/test', test)
+
+	app.use(errorHandler)
 }

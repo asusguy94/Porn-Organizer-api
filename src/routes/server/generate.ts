@@ -8,6 +8,7 @@ import { generateSite, generateStarName, generateWebsite } from '../../generate'
 import { getSetting } from '../../settings'
 
 import handler from '../../middleware/handler'
+import { logger } from '../../middleware/logger'
 
 router.post(
 	'/thumb',
@@ -15,7 +16,7 @@ router.post(
 		const videos = await db.query('SELECT id, path FROM videos')
 		db.end()
 
-		console.log('Generating THUMBNAILS')
+		logger('Generating THUMBNAILS')
 		const width = await getSetting('thumbnail_res')
 		for (let i = 0; i < videos.length; i++) {
 			const video = videos[i]
@@ -30,18 +31,18 @@ router.post(
 			if (await fileExists(videoPath)) {
 				// Check if thumbnail exists
 				if (!(await fileExists(imagePath))) {
-					console.log('Generating HIGHRES', video.id)
+					logger(`Generating HIGHRES ${video.id}`)
 
 					await extractFrame(absoluteVideoPath, absoluteImagePath)
 				}
 				if (!(await fileExists(imagePath_low))) {
-					console.log('Generating LOWRES', video.id)
+					logger(`Generating LOWRES ${video.id}`)
 
 					await extractFrame(absoluteVideoPath, absoluteImagePath_low, 31, width)
 				}
 			}
 		}
-		console.log('Finished generating THUMBNAILS')
+		logger('Finished generating THUMBNAILS')
 	})
 )
 
@@ -144,7 +145,7 @@ router.post(
 		}
 
 		async function addVideoStar(db: any, videoID: number, starID: number) {
-			console.log('Adding VideoStar')
+			logger('Adding VideoStar')
 
 			await db.query('INSERT INTO videostars(videoID, starID) VALUES(:videoID, :starID)', { videoID, starID })
 		}
@@ -168,7 +169,7 @@ router.post(
 			}
 		}
 
-		console.log('Updating DURATION & HEIGHT')
+		logger('Updating DURATION & HEIGHT')
 		const fixVideos = await db.query('SELECT id, path FROM videos WHERE duration = 0 OR height = 0')
 		for (let i = 0; i < fixVideos.length; i++) {
 			const video = fixVideos[i]
@@ -186,10 +187,10 @@ router.post(
 				})
 			}
 		}
-		console.log('Finished updating DURATION & HEIGHT')
+		logger('Finished updating DURATION & HEIGHT')
 
 		const videos = await db.query('SELECT id, path FROM videos')
-		console.log('Updating STARS & WEBSITE/SITE')
+		logger('Updating STARS & WEBSITE/SITE')
 		for (let i = 0; i < videos.length; i++) {
 			const video = videos[i]
 			const videoPath = `videos/${video.path}`
@@ -199,9 +200,9 @@ router.post(
 				await checkStarRelation(db, video.id, video.path)
 			}
 		}
-		console.log('Finished updating STARS & WEBSITE/SITE')
+		logger('Finished updating STARS & WEBSITE/SITE')
 
-		console.log('FINISHED GENERATING METADATA')
+		logger('FINISHED GENERATING METADATA')
 	})
 )
 
@@ -211,7 +212,7 @@ router.post(
 		const videos = await db.query('SELECT id, path FROM videos')
 		db.end()
 
-		console.log('Generating VTT')
+		logger('Generating VTT')
 		for (let i = 0; i < videos.length; i++) {
 			const video = videos[i]
 			const videoPath = `videos/${video.path}`
@@ -231,7 +232,7 @@ router.post(
 				}
 			}
 		}
-		console.log('Finished generating VTT')
+		logger('Finished generating VTT')
 	})
 )
 

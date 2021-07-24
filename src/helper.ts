@@ -5,6 +5,8 @@ import dayjs from 'dayjs'
 
 import { getSetting } from './settings'
 
+import { logger } from './middleware/logger'
+
 const getClosest = (search: number, arr: number[]) => {
 	return arr.reduce((a, b) => {
 		const aDiff = Math.abs(a - search)
@@ -171,7 +173,7 @@ export const getCountryCode = async (db: any, label: string) => {
 
 		return result[0] ? result[0].code : null
 	} catch (err) {
-		console.log(err.message)
+		logger(err.message)
 
 		return null
 	}
@@ -226,7 +228,7 @@ export const getSimilarStars = async (db: any, starID: number, maxLength = 9) =>
 		// if so...more elements should be allowed
 		// but not more than maxMaxLength
 	} catch (err) {
-		console.log(err.message)
+		logger(err.message)
 	}
 }
 
