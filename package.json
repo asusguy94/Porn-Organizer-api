@@ -7,7 +7,9 @@
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"start": "node dist/app.js",
-		"dev": "ts-node ."
+		"dev": "ts-node .",
+		"docker:build": "docker build -t asusguy94/pornts-backend:latest .",
+		"docker:push": "docker push asusguy94/pornts-backend:latest"
 	},
 	"dependencies": {
 		"axios": "^0.21.1",
