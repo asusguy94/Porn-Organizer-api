@@ -7,6 +7,8 @@ import { getSetting } from './settings'
 
 import { logger } from './middleware/logger'
 
+import { settings as settingsConfig } from './config'
+
 const getClosest = (search: number, arr: number[]) => {
 	return arr.reduce((a, b) => {
 		const aDiff = Math.abs(a - search)
@@ -49,7 +51,7 @@ export const getClosestQ = (quality: number) => {
 		return 480
 	}
 
-	return getClosest(quality, [1080, 720, 480, 360])
+	return getClosest(quality, settingsConfig.qualities)
 }
 
 export const fileExists = async (path: string) => {

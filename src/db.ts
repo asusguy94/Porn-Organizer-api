@@ -1,13 +1,13 @@
 import mariaDB from 'mariadb'
 
-import config from './config/db'
+import { db as dbConfig } from './config'
 
 const connect = (params = true) => {
 	return mariaDB.createConnection({
-		host: config.host,
-		user: config.user,
-		password: config.password,
-		database: config.database,
+		host: dbConfig.host,
+		user: dbConfig.user,
+		password: dbConfig.password,
+		database: dbConfig.database,
 		namedPlaceholders: params
 	})
 }
