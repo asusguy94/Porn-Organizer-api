@@ -1,7 +1,7 @@
 import mariaDB from '../db'
 import { Request, Response } from 'express'
 
-import { logger } from '../middleware/logger'
+import { logger } from './logger'
 
 export const success = (res: Response | null, data: any) => {
 	if (data && res !== null) res.send(data)
