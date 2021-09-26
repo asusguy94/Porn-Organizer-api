@@ -5,6 +5,11 @@ import Joi from 'joi'
 import handler from '../../middleware/handler'
 import schemaHandler from '../../middleware/schema'
 
+router.get(
+	'/',
+	handler(async (db) => await db.query('SELECT * FROM country ORDER BY name'))
+)
+
 router.post(
 	'/',
 	handler(async (db, {}, body) => {
