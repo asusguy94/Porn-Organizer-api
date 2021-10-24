@@ -185,7 +185,8 @@ router.get(
 		// change 'path(s)' to object
 		video.path = {
 			file: video.path,
-			stream: `${video.path.split('.').slice(0, -1).join('.')}/playlist.m3u8`
+			stream: `${video.path.split('.').slice(0, -1).join('.')}/playlist.m3u8`,
+			dash: `${video.path.split('.').slice(0, -1).join('.')}/playlist.mpd`
 		}
 
 		const result = await db.query('SELECT COUNT(*) as plays FROM plays WHERE videoID = :videoID', { videoID: id })
