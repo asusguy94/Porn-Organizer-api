@@ -1,6 +1,7 @@
+import { FastifyRequest } from 'fastify'
 import Joi from 'joi'
 
-const schema = (schema: Joi.Schema, body: any) => {
+const schema = (schema: Joi.Schema, body: FastifyRequest['body']) => {
 	const { error, value } = schema.validate(body)
 	if (error) throw new Error(error.details[0].message)
 

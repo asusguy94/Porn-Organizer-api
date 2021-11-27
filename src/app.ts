@@ -1,13 +1,10 @@
-import express from 'express'
-const app = express()
+import Fastify from 'fastify'
+const fastify = Fastify()
 
 import { logger } from './middleware/logger'
 
-import routes from './routes'
+fastify.register(require('./routes'))
 
-const port = 8080
-app.listen(port, () => {
-	logger(`Listening to port ${port}`)
-
-	routes(app)
+fastify.listen(8080, '0.0.0.0', (_err, address) => {
+	logger(`listening on ${address}`)
 })

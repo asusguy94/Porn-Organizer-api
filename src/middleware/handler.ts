@@ -1,34 +1,36 @@
+import { FastifyRequest, FastifyReply } from 'fastify'
 import mariaDB from '../db'
-import { Request, Response } from 'express'
 
 import { logger } from './logger'
 
-export const success = (res: Response | null, data: any) => {
-	if (data && res !== null) res.send(data)
+export const success = (reply: FastifyReply, data: any) => {
+	if (data && reply !== null) reply.send(data)
 }
 
-export const error = (res: Response | null, err: Error) => {
+export const error = (reply: FastifyReply | null, err: any, code = 404) => {
 	logger(err.message)
 
-	if (res !== null) res.status(404).send(err.message)
+	if (reply !== null) reply.status(code).send(err.message)
 }
 
-export const close = (res: Response | null, db: any) => {
-	db.end()
+export const close = (reply: FastifyReply, db: any) => {
+	if (db !== null) db.end()
 
-	if (res !== null) res.end()
+	if (reply !== null) reply.send()
 }
 
-type ICallback = (db: any, params: any, body: any) => any
-export default (callback: ICallback) => async (req: Request, res: Response, next: any) => {
+type ICallback = (db: any, params: any, body: any, request: FastifyRequest, reply: FastifyReply) => any
+const withCallback = (callback: ICallback) => async (request: FastifyRequest, reply: FastifyReply) => {
+	var db = null
 	try {
-		var db = await mariaDB()
+		db = await mariaDB()
 
-		success(res, await callback(db, req.params, req.body))
+		success(reply, await callback(db, request.params, request.body, request, reply))
 	} catch (err) {
-		next(err)
+		error(reply, err)
 	} finally {
-		//@ts-ignore
-		close(res, db)
+		close(reply, db)
 	}
 }
+
+export default withCallback

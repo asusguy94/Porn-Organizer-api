@@ -175,6 +175,7 @@ export const getCountryCode = async (db: any, label: string) => {
 
 		return result[0] ? result[0].code : null
 	} catch (err) {
+		//@ts-ignore
 		logger(err.message)
 
 		return null
@@ -230,6 +231,7 @@ export const getSimilarStars = async (db: any, starID: number, maxLength = 9) =>
 		// if so...more elements should be allowed
 		// but not more than maxMaxLength
 	} catch (err) {
+		//@ts-ignore
 		logger(err.message)
 	}
 }
@@ -242,3 +244,18 @@ export const isNewDate = (dateStr1: string, dateStr2: string) => {
 }
 
 export const getResizedThumb = async (id: number) => `${id}-${await getSetting('thumbnail_res')}.jpg`
+
+export const toBytes = (amount: number, type: 'kb' | 'mb') => {
+	switch (type.toLowerCase()) {
+		case 'kb':
+			amount *= 1024 ** 1
+			break
+		case 'mb':
+			amount *= 1024 ** 2
+			break
+		default:
+			console.log(`"${type}" is not a recognized type`)
+	}
+
+	return amount
+}

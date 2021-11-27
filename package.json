@@ -1,6 +1,6 @@
 {
-	"name": "pornts-api",
-	"version": "1.1.0",
+	"name": "ponts-api--fastify",
+	"version": "1.2.0",
 	"main": "src/app.ts",
 	"license": "MIT",
 	"author": "asusguy94",
@@ -9,31 +9,34 @@
 		"start": "node dist/app.js",
 		"dev": "ts-node .",
 		"docker:build": "docker build -t asusguy94/pornts-backend:latest .",
-		"docker:push": "docker push asusguy94/pornts-backend:latest"
+		"docker:push": "docker push asusguy94/pornts-backend:latest",
+		"docker:remove": "docker rmi asusguy94/pornts-backend:latest",
+		"docker": "yarn docker:build && yarn docker:push && yarn docker:remove",
+		"docker:watch": "nodemon --exec \"yarn docker\""
 	},
 	"dependencies": {
-		"axios": "^0.22.0",
+		"axios": "^0.24.0",
 		"cheerio": "^1.0.0-rc.10",
-		"cors": "^2.8.5",
 		"dayjs": "^1.10.7",
-		"express": "^4.17.1",
+		"fastify": "^3.24.0",
+		"fastify-cors": "^6.0.2",
+		"fastify-static": "^4.5.0",
 		"ffmpeg-extract-frame": "^1.0.2",
 		"get-video-dimensions": "^1.0.0",
 		"get-video-duration": "^4.0.0",
 		"joi": "^17.4.2",
-		"mariadb": "^2.5.4",
-		"node-fetch": "^2.6.5",
+		"mariadb": "^2.5.5",
+		"node-fetch": "^2.6.6",
 		"rimraf": "^3.0.2",
-		"sharp": "^0.29.1"
+		"sharp": "^0.29.3"
 	},
 	"devDependencies": {
-		"@types/cors": "^2.8.12",
-		"@types/express": "^4.17.13",
-		"@types/node": "^16.10.3",
-		"@types/node-fetch": "^2.5.12",
+		"@types/faker": "^5.5.9",
+		"@types/node": "^16.11.7",
+		"@types/node-fetch": "2.5.12",
 		"@types/rimraf": "^3.0.2",
-		"@types/sharp": "^0.29.2",
-		"ts-node": "^10.2.1",
-		"typescript": "^4.4.3"
+		"@types/sharp": "^0.29.4",
+		"ts-node": "^10.4.0",
+		"typescript": "^4.4.4"
 	}
 }
