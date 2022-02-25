@@ -1,8 +1,18 @@
 import { FastifyInstance } from 'fastify'
 
+import { fileExists, getClosestQ, rebuildVideoFile } from '../../helper'
+import {
+	getWebsiteID,
+	getSiteID,
+	getStarID,
+	getAliasAsStarID,
+	getIgnoredStar,
+	getIgnoredStarID,
 import { fileExists, getClosestQ } from '../../helper'
 import { getWebsiteID, getSiteID, getStarID, getAliasAsStarID, getIgnoredStar, getIgnoredStarID } from '../../helper.db'
 import { duration as videoDuration, height as videoHeight, extractFrame } from '../../ffmpeg'
+} from '../../helper.db'
+import { duration as videoDuration, height as videoHeight, extractFrame, extractVtt } from '../../ffmpeg'
 import { generateSite, generateStarName, generateWebsite } from '../../generate'
 import { getSetting } from '../../settings'
 
@@ -13,7 +23,7 @@ export default async (fastify: FastifyInstance) => {
 	fastify.post(
 		'/thumb',
 		handler(async (db) => {
-			const videos = await db.query('SELECT id, path FROM videos')
+			const videos = await db.query('SELECT id, path FROM videos WHERE NOT (duration = 0 OR height = 0)')
 			db.end()
 
 			logger('Generating THUMBNAILS')
@@ -188,13 +198,17 @@ export default async (fastify: FastifyInstance) => {
 				const absoluteVideoPath = `./public/${videoPath}`
 
 				if (await fileExists(videoPath)) {
+					logger(`Rebuild: ${video.id}`)
+					await rebuildVideoFile(absoluteVideoPath).then(async () => {
 					const duration = await videoDuration(absoluteVideoPath)
 					const height = await videoHeight(absoluteVideoPath)
 
+						logger(`Refreshing ${video.path}`)
 					await db.query('UPDATE videos SET duration = :duration, height = :height WHERE id = :videoID', {
 						videoID: video.id,
-						duration,
-						height: getClosestQ(height)
+							height: getClosestQ(height),
+							duration
+						})
 					})
 				}
 			}
@@ -220,27 +234,23 @@ export default async (fastify: FastifyInstance) => {
 	fastify.post(
 		'/vtt',
 		handler(async (db) => {
-			const videos = await db.query('SELECT id, path FROM videos')
+			const videos = await db.query('SELECT id, path FROM videos WHERE NOT (duration = 0 OR height = 0)')
 			db.end()
 
 			logger('Generating VTT')
 			for (let i = 0; i < videos.length; i++) {
 				const video = videos[i]
+
 				const videoPath = `videos/${video.path}`
-				//const imagePath = `images/videos/${video.id}.jpg`
+				const imagePath = `vtt/${video.id}.jpg`
 				const vttPath = `vtt/${video.id}.vtt`
 
-				//const absoluteVideoPath = `./public/${videoPath}`
-				//const absoluteImagePath = `./public/${imagePath}`
-				//const absoluteVttPath = `./public/${vttPath}`
+				const absoluteVideoPath = `./public/${videoPath}`
+				const absoluteImagePath = `./public/${imagePath}`
 
-				if (await fileExists(videoPath)) {
-					if (!(await fileExists(vttPath))) {
-						// extract images
-						// generate tileset from images
-						// remove images
-						// generate vtt from tileset
-					}
+				if ((await fileExists(videoPath)) && !(await fileExists(vttPath))) {
+					logger(`Generating VTT: ${video.id}`)
+					await extractVtt(absoluteVideoPath, absoluteImagePath, video.id)
 				}
 			}
 			logger('Finished generating VTT')
