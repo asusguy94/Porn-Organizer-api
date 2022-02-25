@@ -25,9 +25,6 @@ export default async (fastify: FastifyInstance) => {
 			for (let i = 0; i < videos.length; i++) {
 				const video = videos[i]
 
-				const websiteID = await getWebsiteID(db, video.website)
-				const siteID = await getSiteID(db, video.site)
-
 				// Insert into VIDEOS-table
 				await db.query('INSERT INTO videos(path, name, date) VALUES(:path, :name, :date)', {
 					path: video.path,
@@ -35,12 +32,8 @@ export default async (fastify: FastifyInstance) => {
 					date: video.date
 				})
 
-				// sometimes this fails...find out why it fails
-				console.log(`websiteID="${websiteID}"`)
-				console.log(`typeof websiteID="${typeof websiteID}"`)
-
 				// First video from new Website
-				if (!websiteID) {
+				if (!(await getWebsiteID(db, video.website))) {
 					// Create Website
 					await db.query('INSERT INTO websites(name) VALUES(:website)', {
 						website: video.website
@@ -48,13 +41,13 @@ export default async (fastify: FastifyInstance) => {
 				}
 
 				// First video from Site AND Site is NOT EMPTY
-				if (!siteID && video.site.length) {
+				if (!(await getSiteID(db, video.site)) && video.site.length) {
 					// EVERY Site must have a website, hence it is not required to test for this
 
 					// Create WebsiteSite
 					await db.query('INSERT INTO sites(name, websiteID) VALUES(:site, :websiteID)', {
 						site: video.site,
-						websiteID
+						websiteID: await getWebsiteID(db, video.website)
 					})
 				}
 			}
