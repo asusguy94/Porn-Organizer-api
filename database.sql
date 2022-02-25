@@ -44,22 +44,9 @@ CREATE TABLE `plays` (
 
 CREATE TABLE `settings` (
   `id` int(11) NOT NULL,
-  `similar_def` int(11) NOT NULL DEFAULT 8,
-  `similar_max` int(11) NOT NULL DEFAULT 60,
-  `similar_text` tinyint(1) NOT NULL DEFAULT 0,
   `thumbnail_res` int(11) NOT NULL DEFAULT 290,
-  `thumbnail_start` int(11) NOT NULL DEFAULT 100,
-  `parser` tinyint(1) NOT NULL DEFAULT 0,
-  `enable_fa` tinyint(1) NOT NULL DEFAULT 0,
-  `video_sql` varchar(255) DEFAULT NULL,
-  `enable_dash` tinyint(1) NOT NULL DEFAULT 0,
-  `enable_hls` tinyint(1) NOT NULL DEFAULT 0,
-  `enable_https` tinyint(1) NOT NULL DEFAULT 0,
-  `script_reload` tinyint(1) NOT NULL DEFAULT 0
+  `thumbnail_start` int(11) NOT NULL DEFAULT 100
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
-
-INSERT INTO `settings` (`id`, `similar_def`, `similar_max`, `similar_text`, `thumbnail_res`, `thumbnail_start`, `parser`, `enable_fa`, `video_sql`, `enable_dash`, `enable_hls`, `enable_https`, `script_reload`) VALUES
-(1, 8, 16, 1, 290, 100, 1, 1, NULL, 0, 1, 1, 0);
 
 CREATE TABLE `sites` (
   `id` int(11) NOT NULL,
@@ -85,8 +72,6 @@ CREATE TABLE `stars` (
   `birthdate` date DEFAULT NULL,
   `height` int(11) DEFAULT NULL,
   `weight` int(11) DEFAULT NULL,
-  `start` year(4) DEFAULT NULL,
-  `end` year(4) DEFAULT NULL,
   `autoTaggerIgnore` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -94,12 +79,6 @@ CREATE TABLE `videoattributes` (
   `id` int(11) NOT NULL,
   `videoID` int(11) NOT NULL,
   `attributeID` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `videocategories` (
-  `id` int(11) NOT NULL,
-  `videoID` int(11) NOT NULL,
-  `categoryID` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `videolocations` (
@@ -145,13 +124,11 @@ CREATE TABLE `websites` (
 
 ALTER TABLE `attributes`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `name` (`name`);
+  ADD UNIQUE KEY `name` (`name`);
 
 ALTER TABLE `bookmarks`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `videoID` (`videoID`),
-  ADD KEY `start` (`start`),
-  ADD KEY `categoryID` (`categoryID`);
+  ADD UNIQUE KEY `videoID_start` (`videoID`,`start`);
 
 ALTER TABLE `categories`
   ADD PRIMARY KEY (`id`),
@@ -164,71 +141,54 @@ ALTER TABLE `country`
 
 ALTER TABLE `locations`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `name` (`name`);
+  ADD UNIQUE KEY `name` (`name`);
 
 ALTER TABLE `plays`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `time` (`time`),
-  ADD KEY `videoID` (`videoID`);
+  ADD UNIQUE KEY `videoID_time` (`videoID`,`time`);
 
 ALTER TABLE `settings`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `sites`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `name` (`name`),
-  ADD KEY `websiteID` (`websiteID`);
+  ADD UNIQUE KEY `name` (`name`);
 
 ALTER TABLE `staralias`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `name` (`name`),
+  ADD UNIQUE KEY `name` (`name`) USING BTREE,
   ADD KEY `starID` (`starID`);
 
 ALTER TABLE `stars`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `name` (`name`) USING BTREE,
+  ADD UNIQUE KEY `name` (`name`),
   ADD UNIQUE KEY `image` (`image`),
   ADD KEY `breast` (`breast`),
-  ADD KEY `haircolor` (`haircolor`) USING BTREE,
-  ADD KEY `eyecolor` (`eyecolor`) USING BTREE,
+  ADD KEY `eyecolor` (`eyecolor`),
+  ADD KEY `haircolor` (`haircolor`),
   ADD KEY `ethnicity` (`ethnicity`),
   ADD KEY `country` (`country`),
   ADD KEY `birthdate` (`birthdate`),
   ADD KEY `height` (`height`),
   ADD KEY `weight` (`weight`),
-  ADD KEY `start` (`start`),
-  ADD KEY `end` (`end`),
   ADD KEY `autoTaggerIgnore` (`autoTaggerIgnore`);
 
 ALTER TABLE `videoattributes`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `videoID` (`videoID`),
-  ADD KEY `attributeID` (`attributeID`);
-
-ALTER TABLE `videocategories`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `videoID` (`videoID`),
-  ADD KEY `categoryID` (`categoryID`);
+  ADD UNIQUE KEY `videoID_attributeID` (`videoID`,`attributeID`) USING BTREE;
 
 ALTER TABLE `videolocations`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `videoID` (`videoID`),
-  ADD KEY `locationID` (`locationID`) USING BTREE;
+  ADD UNIQUE KEY `videoID_locationID` (`videoID`,`locationID`);
 
 ALTER TABLE `videos`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `path` (`path`),
-  ADD KEY `name` (`name`),
-  ADD KEY `date` (`date`),
-  ADD KEY `duration` (`duration`),
-  ADD KEY `starAge` (`starAge`),
-  ADD KEY `added` (`added`),
-  ADD KEY `height` (`height`);
+  ADD KEY `date` (`date`);
 
 ALTER TABLE `videosites`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `videoID` (`videoID`) USING BTREE,
-  ADD KEY `siteID` (`siteID`);
+  ADD UNIQUE KEY `videoID` (`videoID`) USING BTREE;
 
 ALTER TABLE `videostars`
   ADD PRIMARY KEY (`id`),
@@ -237,8 +197,7 @@ ALTER TABLE `videostars`
 
 ALTER TABLE `videowebsites`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `videoID` (`videoID`) USING BTREE,
-  ADD KEY `websiteID` (`websiteID`);
+  ADD UNIQUE KEY `videoID` (`videoID`) USING BTREE;
 
 ALTER TABLE `websites`
   ADD PRIMARY KEY (`id`),
@@ -264,7 +223,7 @@ ALTER TABLE `plays`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `settings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `sites`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -276,9 +235,6 @@ ALTER TABLE `stars`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `videoattributes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
-ALTER TABLE `videocategories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `videolocations`
@@ -298,6 +254,40 @@ ALTER TABLE `videowebsites`
 
 ALTER TABLE `websites`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+
+ALTER TABLE `bookmarks`
+  ADD CONSTRAINT `fk_bookmarks_categories_id` FOREIGN KEY (`categoryID`) REFERENCES `categories` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_bookmarks_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `plays`
+  ADD CONSTRAINT `fk_plays_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `sites`
+  ADD CONSTRAINT `fk_sites_websites_id` FOREIGN KEY (`websiteID`) REFERENCES `websites` (`id`) ON UPDATE CASCADE;
+
+ALTER TABLE `staralias`
+  ADD CONSTRAINT `fk_staralias_stars_id` FOREIGN KEY (`starID`) REFERENCES `stars` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `videoattributes`
+  ADD CONSTRAINT `fk_videoattributes_attributes_id` FOREIGN KEY (`attributeID`) REFERENCES `attributes` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_videoattributes_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `videolocations`
+  ADD CONSTRAINT `fk_videolocations_locations_id` FOREIGN KEY (`locationID`) REFERENCES `locations` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_videolocations_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `videosites`
+  ADD CONSTRAINT `fk_videosites_sites_id` FOREIGN KEY (`siteID`) REFERENCES `sites` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_videosites_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `videostars`
+  ADD CONSTRAINT `fk_videostars_stars_id` FOREIGN KEY (`starID`) REFERENCES `stars` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_videostars_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `videowebsites`
+  ADD CONSTRAINT `fk_videowebsites_videos_id` FOREIGN KEY (`videoID`) REFERENCES `videos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_videowebsites_websites_id` FOREIGN KEY (`websiteID`) REFERENCES `websites` (`id`) ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

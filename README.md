@@ -1,5 +1,26 @@
 # PornJS Backend Scripts
 
+## Notes about upgrading
+
+A lot of changes to the database structure has been made, and not doing the bellow, will cause issues/errors down the line
+
+### Keep the existing data
+
+| Action                                           | Details                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remove the following rows from the `stars` table | <ul><li>`stars.start`</li><li>`stars.end`</li><ul>                                                                                                                                                                                                                                                                                                            |
+| Backup the following data (ONLY DATA)            | <ul><li>`attributes`</li><li>`bookmarks`</li><li>`categories`</li><li>`country`</li><li>`locations`</li><li>`plays`</li><li>`settings`</li><li>`sites`</li><li>`staralias`</li><li>`stars`</li><li>`videoattributes`</li><li>`videolocations`</li><li>`videos`</li><li>`videosites`</li><li>`videostars`</li><li>`videowebsites`</li><li>`websites`</li></ul> |
+
+### Don't keep the existing data
+
+| Action                                   | Details                                                                                            |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Remove/rename the database               | <ul><li>rename if you want the backup for later</li><li>remove if you want to start fresh</li><ul> |
+| Create a new database with the same name |                                                                                                    |
+
+1. Download and import the new database-file [database.sql](database.sql)
+2. Import any backed-up data into the new database
+
 ## Requirements
 
 1. NodeJS
