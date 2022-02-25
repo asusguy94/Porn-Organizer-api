@@ -2,9 +2,9 @@ import axios from 'axios'
 import cheerio from 'cheerio'
 
 const getProfileName = async (db: any, starID: number) => {
-	const stars = await db.query('SELECT name FROM stars WHERE id = :starID LIMIT 1', { starID })
+	const stars = (await db.query('SELECT name FROM stars WHERE id = :starID LIMIT 1', { starID }))[0]
 
-	return stars[0] ? stars[0].name : null
+	return stars ? stars.name : null
 }
 
 async function loadUrl(url: string) {
@@ -72,8 +72,10 @@ const getProfileData_alias = async (url: string) => {
 	}
 }
 
-export const getProfileLink = async (db: any, starID: number) => {
-	const starName = await getProfileName(db, starID)
+export const getProfileLink = async (db: any, starID: number, starName: string | undefined) => {
+	if (starName === undefined) {
+		starName = await getProfileName(db, starID)
+	}
 	if (starName) {
 		return await getProfileLink_alias(starName)
 	}

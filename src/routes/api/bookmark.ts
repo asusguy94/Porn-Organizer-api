@@ -8,7 +8,7 @@ export default async (fastify: FastifyInstance) => {
 	fastify.put(
 		'/:id',
 		handler(async (db, { id }, body) => {
-			const value = schemaHandler(
+			const { time, categoryID } = schemaHandler(
 				Joi.object({
 					time: Joi.number().integer().min(1),
 					categoryID: Joi.number().integer().min(1)
@@ -16,35 +16,25 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			if ('time' in value) {
+			if (time !== undefined) {
 				// Change BookmarkTime
-				const video = await db.query('SELECT videoID FROM bookmarks WHERE id = :id LIMIT 1', { id })
-				const videoID = video[0].videoID
-
-				const result = await db.query(
-					'SELECT COUNT(*) as total FROM bookmarks WHERE start = :time AND videoID = :videoID LIMIT 1',
-					{
-						time: value.time,
-						videoID
-					}
-				)
-				if (!result[0].total) {
 					await db.query('UPDATE bookmarks SET start = :time WHERE id = :bookmarkID', {
-						time: value.time,
+					time,
 						bookmarkID: id
 					})
 
 					// Return NEW bookmark
-					const bookmark = await db.query('SELECT * FROM bookmarks WHERE id = :bookmarkID LIMIT 1', {
+				const bookmark = (
+					await db.query('SELECT * FROM bookmarks WHERE id = :bookmarkID LIMIT 1', {
 						bookmarkID: id
 					})
+				)[0]
 
-					return bookmark[0]
-				}
-			} else if ('categoryID' in value) {
+				return bookmark
+			} else if (categoryID != undefined) {
 				// Change CategoryID
 				await db.query('UPDATE bookmarks SET categoryID = :categoryID WHERE id = :bookmarkID', {
-					categoryID: value.categoryID,
+					categoryID,
 					bookmarkID: id
 				})
 			}

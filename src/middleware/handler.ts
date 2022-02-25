@@ -13,7 +13,7 @@ export const error = (reply: FastifyReply | null, err: any, code = 404) => {
 	if (reply !== null) reply.status(code).send(err.message)
 }
 
-export const close = (reply: FastifyReply, db: any) => {
+export const close = (reply: FastifyReply | null, db: any) => {
 	if (db !== null) db.end()
 
 	if (reply !== null) reply.send()

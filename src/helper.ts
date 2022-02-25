@@ -2,12 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import fetch from 'node-fetch'
 import dayjs from 'dayjs'
-
-import { getSetting } from './settings'
+import rimraf from 'rimraf'
+import ffmpeg from 'fluent-ffmpeg'
 
 import { logger } from './middleware/logger'
 
 import { settings as settingsConfig } from './config'
+
+import { getSetting } from './settings'
 
 const getClosest = (search: number, arr: number[]) => {
 	return arr.reduce((a, b) => {
@@ -28,7 +30,11 @@ export const downloader = async (url: string, path: string) => {
 	await fs.promises.writeFile(`./${path}`, buffer)
 }
 
+export const writeToFile = async (path: string, content: string) => fs.promises.appendFile(path, content)
+
 export const dirOnly = (dir: string, root = false) => (root ? path.parse(dir).dir : path.parse(dir).name)
+
+export const extOnly = (dir: string) => path.parse(dir).ext
 
 export const noExt = (dir: string) => {
 	const parsed = path.parse(dir)
@@ -44,7 +50,28 @@ export const removeThumbnails = async (videoID: number) => {
 	// Remove Previews
 	fs.unlink(`./public/images/thumbnails/${videoID}.jpg`, () => {})
 	fs.unlink(`./public/vtt/${videoID}.vtt`, () => {})
+	fs.unlink(`./public/vtt/${videoID}.jpg`, () => {})
 }
+
+// This requires a specific pipeline, as such it is using callbacks
+export const rebuildVideoFile = async (src: string) => {
+	const { dir, ext, name } = path.parse(src)
+	const newSrc = `${dir}/${name}_${ext}`
+
+	return new Promise<void | Error>((resolve, reject) => {
+		fs.promises.rename(src, newSrc).then(async () => {
+			ffmpeg(newSrc)
+				.videoCodec('copy')
+				.audioCodec('copy')
+				.output(src)
+				.on('end', () => fs.unlink(newSrc, () => resolve()))
+				.on('error', (err) => reject(err))
+				.run()
+		})
+	})
+}
+
+export const removeStreamFolder = (path: string) => rimraf(path, () => {})
 
 export const getClosestQ = (quality: number) => {
 	if (quality === 396) {
@@ -55,7 +82,7 @@ export const getClosestQ = (quality: number) => {
 }
 
 export const fileExists = async (path: string) => {
-	return new Promise((resolve) => {
+	return new Promise<boolean>((resolve) => {
 		fs.access(`./public/${path}`, fs.constants.F_OK, (err) => {
 			if (!err) {
 				resolve(true)
@@ -171,9 +198,9 @@ export const formatBreastSize = (input: string) => {
 
 export const getCountryCode = async (db: any, label: string) => {
 	try {
-		const result = await db.query('SELECT code FROM country WHERE name = :country LIMIT 1', { country: label })
+		const result = (await db.query('SELECT code FROM country WHERE name = :country LIMIT 1', { country: label }))[0]
 
-		return result[0] ? result[0].code : null
+		return result ? result.code : null
 	} catch (err) {
 		//@ts-ignore
 		logger(err.message)
@@ -182,10 +209,9 @@ export const getCountryCode = async (db: any, label: string) => {
 	}
 }
 
-export const getSimilarStars = async (db: any, starID: number, maxLength = 9) => {
+export const getSimilarStars = async (db: any, starID: number, maxMaxLength = 9) => {
 	try {
-		const stars = await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID })
-		const currentStar = stars[0]
+		const currentStar = (await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID }))[0]
 
 		const match_default = 2
 		const match_important = 5
@@ -224,12 +250,10 @@ export const getSimilarStars = async (db: any, starID: number, maxLength = 9) =>
 			return otherStar.match > 0 ? otherStar : null
 		})
 
-		otherStarsArr.sort((b, a) => Math.sign(a.match - b.match))
-		return otherStarsArr.slice(0, maxLength)
-
-		// TODO check if match is 100%
-		// if so...more elements should be allowed
-		// but not more than maxMaxLength
+		return otherStarsArr
+			.sort((a, b) => b.match - a.match)
+			.map(({ id, name, image, match }) => ({ id, name, image, match }))
+			.slice(0, maxMaxLength)
 	} catch (err) {
 		//@ts-ignore
 		logger(err.message)
@@ -258,4 +282,68 @@ export const toBytes = (amount: number, type: 'kb' | 'mb') => {
 	}
 
 	return amount
+}
+
+const calculateTime = (secs: number) =>
+	dayjs(0)
+		.hour(0)
+		.millisecond(secs * 1000)
+
+export const generateVTTData = async (
+	videoID: number,
+	delayBetweenFrames: number,
+	tiles: { rows: number; cols: number },
+	dimension: { height: number; width: number }
+) => {
+	const vtt = `./public/vtt/${videoID}.vtt`
+
+	let nextTimeCode = 0
+	const generateTimeCodes = () => {
+		const timeCodeFormat = 'HH:mm:ss.SSS'
+
+		const start = calculateTime(nextTimeCode)
+		const end = calculateTime(nextTimeCode + delayBetweenFrames)
+
+		nextTimeCode += delayBetweenFrames
+
+		return { start: start.format(timeCodeFormat), end: end.format(timeCodeFormat) }
+	}
+
+	await writeToFile(vtt, 'WEBVTT')
+	for (let row = 0, counter = 0; row < tiles.rows; row++) {
+		const posY = row * dimension.height
+		for (let col = 0; col < tiles.cols; col++) {
+			const posX = col * dimension.width
+
+			const { start, end } = generateTimeCodes()
+
+			await writeToFile(vtt, '\n')
+			await writeToFile(vtt, `\n${++counter}`)
+			await writeToFile(vtt, `\n${start} --> ${end}`)
+			await writeToFile(vtt, `\nvtt/thumb#xywh=${posX},${posY},${dimension.width},${dimension.height}`)
+		}
+	}
+}
+
+export const getDividableWidth = (limits: { min: number; max: number }, width: number, increment = 10): number => {
+	const min = 10 * 2
+	const max = width / 2
+
+	for (let dividend = limits.max; dividend >= limits.min; dividend--) {
+		if (width % dividend === 0) return dividend
+	}
+
+	// Check if calculation is out-of-bounds
+	if (limits.max + increment < max || limits.min - increment > min) {
+		if (limits.max + increment < max) {
+			limits.max += increment
+		}
+
+		if (limits.min - increment > min) {
+			limits.min -= increment
+		}
+
+		return getDividableWidth(limits, width, increment)
+	}
+	return -1
 }

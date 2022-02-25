@@ -4,7 +4,7 @@ import starRoute from './star'
 import videoRoute from './video'
 import generateRoute from './generate'
 
-import testRoute from './test'
+import testRoute from './testRoute'
 
 export default async (fastify: FastifyInstance) => {
 	fastify.register(starRoute, { prefix: 'star' })

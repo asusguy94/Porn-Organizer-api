@@ -8,9 +8,7 @@ import {
 	getAliasAsStarID,
 	getIgnoredStar,
 	getIgnoredStarID,
-import { fileExists, getClosestQ } from '../../helper'
-import { getWebsiteID, getSiteID, getStarID, getAliasAsStarID, getIgnoredStar, getIgnoredStarID } from '../../helper.db'
-import { duration as videoDuration, height as videoHeight, extractFrame } from '../../ffmpeg'
+	starExists
 } from '../../helper.db'
 import { duration as videoDuration, height as videoHeight, extractFrame, extractVtt } from '../../ffmpeg'
 import { generateSite, generateStarName, generateWebsite } from '../../generate'
@@ -60,27 +58,31 @@ export default async (fastify: FastifyInstance) => {
 		'/meta',
 		handler(async (db) => {
 			async function websiteRelationExists(db: any, videoID: number, websiteID: number) {
-				const result = await db.query(
+				return (
+					(
+						await db.query(
 					'SELECT COUNT(*) as total FROM videowebsites WHERE websiteID = :websiteID AND videoID = :videoID LIMIT 1',
 					{
 						websiteID,
 						videoID
 					}
 				)
-
-				return result[0].total > 0
+					)[0].total > 0
+				)
 			}
 
 			async function siteRelationExists(db: any, videoID: number, siteID: number) {
-				const result = await db.query(
+				return (
+					(
+						await db.query(
 					'SELECT COUNT(*) as total FROM videosites WHERE siteID = :siteID AND videoID = :videoID LIMIT 1',
 					{
 						siteID,
 						videoID
 					}
 				)
-
-				return result[0].total > 0
+					)[0].total > 0
+				)
 			}
 
 			async function checkWebsiteRelation(db: any, videoID: number, videoPath: string) {
@@ -108,58 +110,53 @@ export default async (fastify: FastifyInstance) => {
 			}
 
 			async function starRelationExists(db: any, videoID: number) {
-				const result = await db.query(
-					'SELECT COUNT(*) as total FROM videostars WHERE videoID = :videoID LIMIT 1',
-					{
+				return (
+					(
+						await db.query('SELECT COUNT(*) as total FROM videostars WHERE videoID = :videoID LIMIT 1', {
 						videoID
-					}
+						})
+					)[0].total > 0
 				)
-
-				return result[0].total > 0
 			}
 
 			async function videoStarExists(db: any, videoID: number, star: string) {
 				const starID = getStarID(db, star)
 
-				const result = await db.query(
+				return (
+					(
+						await db.query(
 					'SELECT COUNT(*) as total FROM videostars WHERE videoID = :videoID AND starID = :starID LIMIT 1',
 					{
 						videoID,
 						starID
 					}
 				)
-
-				return result[0].total > 0
+					)[0].total > 0
+				)
 			}
 
 			async function videoStarAliasExists(db: any, videoID: number, alias: string) {
-				const starID = getAliasAsStarID(db, alias)
-
-				const result = await db.query(
+				return (
+					(
+						await db.query(
 					'SELECT COUNT(*) as total FROM videostars WHERE videoID = :videoID AND starID = :starID LIMIT 1',
 					{
 						videoID,
-						starID
+								starID: await getAliasAsStarID(db, alias)
 					}
 				)
-
-				return result[0].total > 0
-			}
-
-			async function starExists(db: any, star: string) {
-				const result = await db.query('SELECT COUNT(*) as total FROM stars WHERE name = :star LIMIT 1', {
-					star
-				})
-
-				return result[0].total > 0
+					)[0].total > 0
+				)
 			}
 
 			async function starAliasExists(db: any, alias: string) {
-				const result = await db.query('SELECT COUNT(*) as total FROM staralias WHERE name = :alias LIMIT 1', {
+				return (
+					(
+						await db.query('SELECT COUNT(*) as total FROM staralias WHERE name = :alias LIMIT 1', {
 					alias
 				})
-
-				return result[0].total > 0
+					)[0].total > 0
+				)
 			}
 
 			async function addVideoStar(db: any, videoID: number, starID: number) {

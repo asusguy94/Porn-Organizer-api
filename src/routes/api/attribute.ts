@@ -20,14 +20,9 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query('SELECT COUNT(*) as total FROM attributes WHERE name = :attribute LIMIT 1', {
+			await db.query('INSERT INTO attributes(name) VALUES(:attribute)', {
 				attribute: name
 			})
-			if (!result[0].total) {
-				await db.query('INSERT INTO attributes(name) VALUES(:attribute)', {})
-			} else {
-				throw new Error('Attribute already exists')
-			}
 		})
 	)
 

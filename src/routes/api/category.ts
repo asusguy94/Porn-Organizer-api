@@ -20,17 +20,9 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query('SELECT COUNT(*) as total FROM categories WHERE name = :category LIMIT 1', {
-				category: name
-			})
-
-			if (!result[0].total) {
 				await db.query('INSERT INTO categories(name) VALUES(:category)', {
 					category: name
 				})
-			} else {
-				throw new Error('Category already exists')
-			}
 		})
 	)
 

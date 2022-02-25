@@ -20,16 +20,9 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query('SELECT COUNT(*) as total FROM locations WHERE name = :location LIMIT 1', {
-				location: name
-			})
-			if (!result[0].total) {
 				await db.query('INSERT INTO locations(name) VALUES(:location)', {
 					location: name
 				})
-			} else {
-				throw new Error('Location already exists')
-			}
 		})
 	)
 

@@ -20,7 +20,7 @@ export default async (fastify: FastifyInstance) => {
 		'/video',
 		handler(async (db) => {
 			const result = await db.query(
-				'SELECT videos.id AS videoID, videos.height, videos.starAge, videos.path AS videoPath, videos.name AS videoName, videos.date AS videoDate, videos.added AS videoAdded, stars.name AS star, datediff(videos.date, stars.birthdate) AS ageinvideo, websites.name AS websiteName, sites.name AS siteName, categories.name AS categoryName, attributes.name AS attributeName, locations.name AS locationName FROM videos LEFT OUTER JOIN videostars ON videos.id = videostars.videoID LEFT JOIN stars ON stars.id = videostars.starID LEFT JOIN videowebsites ON videos.id = videowebsites.videoID LEFT JOIN websites ON videowebsites.websiteID = websites.id LEFT OUTER JOIN videosites ON videosites.videoID = videos.id LEFT JOIN sites ON sites.id = videosites.siteID LEFT OUTER JOIN videoattributes ON videos.id = videoattributes.videoID LEFT JOIN attributes ON videoattributes.attributeID = attributes.id LEFT OUTER JOIN videolocations ON videos.id = videolocations.videoID LEFT JOIN locations ON videolocations.locationID = locations.id LEFT JOIN bookmarks ON videos.id = bookmarks.videoID LEFT JOIN categories ON bookmarks.categoryID = categories.id ORDER BY videoName, videoPath'
+				'SELECT videos.id AS videoID, videos.height, videos.starAge, videos.path AS videoPath, videos.name AS videoName, videos.date AS videoDate, videos.added AS videoAdded, stars.name AS star, datediff(videos.date, stars.birthdate) AS ageinvideo, websites.name AS websiteName, sites.name AS siteName, categories.name AS categoryName, attributes.name AS attributeName, locations.name AS locationName, (SELECT COUNT(*) FROM plays WHERE plays.videoID = videos.id) as plays FROM videos LEFT OUTER JOIN videostars ON videos.id = videostars.videoID LEFT JOIN stars ON stars.id = videostars.starID LEFT JOIN videowebsites ON videos.id = videowebsites.videoID LEFT JOIN websites ON videowebsites.websiteID = websites.id LEFT OUTER JOIN videosites ON videosites.videoID = videos.id LEFT JOIN sites ON sites.id = videosites.siteID LEFT OUTER JOIN videoattributes ON videos.id = videoattributes.videoID LEFT JOIN attributes ON videoattributes.attributeID = attributes.id LEFT OUTER JOIN videolocations ON videos.id = videolocations.videoID LEFT JOIN locations ON videolocations.locationID = locations.id LEFT JOIN bookmarks ON videos.id = bookmarks.videoID LEFT JOIN categories ON bookmarks.categoryID = categories.id ORDER BY videoName, videoPath'
 			)
 
 			const videos = []
@@ -64,10 +64,7 @@ export default async (fastify: FastifyInstance) => {
 					video.website = websiteName
 					video.site = siteName || ''
 
-					const data = await db.query('SELECT COUNT(*) as total FROM plays WHERE videoID = :videoID', {
-						videoID
-					})
-					video.plays = data[0].total
+					video.plays = current.plays
 
 					video.pov = categoryArr.every((category) => category.endsWith(' (POV)'))
 				}

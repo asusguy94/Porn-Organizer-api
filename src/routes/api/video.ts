@@ -7,6 +7,7 @@ import { generateStarName } from '../../generate'
 
 import handler from '../../middleware/handler'
 import schemaHandler from '../../middleware/schema'
+import { aliasExists, getAliasAsStarID } from '../../helper.db'
 
 export default async (fastify: FastifyInstance) => {
 	fastify.get(
@@ -65,14 +66,6 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query(
-				'SELECT COUNT(*) as total FROM videoattributes WHERE videoID = :videoID AND attributeID = :attributeID',
-				{
-					videoID: id,
-					attributeID
-				}
-			)
-			if (!result[0].total) {
 				const insert = await db.query(
 					'INSERT INTO videoattributes(videoID, attributeID) VALUES(:videoID, :attributeID)',
 					{
@@ -82,9 +75,6 @@ export default async (fastify: FastifyInstance) => {
 				)
 
 				return { id: insert.insertId, videoID: id, attributeID }
-			} else {
-				throw new Error('Attribute already exists')
-			}
 		})
 	)
 
@@ -98,14 +88,6 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query(
-				'SELECT COUNT(*) as total FROM videolocations WHERE videoID = :videoID AND locationID = :locationID',
-				{
-					videoID: id,
-					locationID
-				}
-			)
-			if (!result[0].total) {
 				const insert = await db.query(
 					'INSERT INTO videolocations(videoID, locationID) VALUES(:videoID, :locationID)',
 					{
@@ -115,9 +97,6 @@ export default async (fastify: FastifyInstance) => {
 				)
 
 				return { id: insert.insertId, videoID: id, locationID }
-			} else {
-				throw new Error('Location already exists')
-			}
 		})
 	)
 
@@ -132,14 +111,6 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const bookmark = await db.query(
-				'SELECT COUNT(*) as total FROM bookmarks WHERE videoID = :videoID AND start = :time LIMIT 1',
-				{
-					videoID: id,
-					time
-				}
-			)
-			if (!bookmark[0].total) {
 				const insert = await db.query(
 					'INSERT INTO bookmarks(videoID, categoryID, start) VALUES(:videoID, :categoryID, :time)',
 					{
@@ -150,9 +121,6 @@ export default async (fastify: FastifyInstance) => {
 				)
 
 				return { id: insert.insertId, videoID: id, categoryID, time, starID: 0 }
-			} else {
-				throw new Error('Bookmark already exists')
-			}
 		})
 	)
 
@@ -166,8 +134,12 @@ export default async (fastify: FastifyInstance) => {
 	fastify.get(
 		'/:id',
 		handler(async (db, { id }) => {
-			const data = await db.query('SELECT * FROM videos WHERE id = :videoID LIMIT 1', { videoID: id })
-			const video = data[0]
+			const video = (
+				await db.query(
+					'SELECT videos.*, (SELECT COUNT(*) FROM plays WHERE plays.videoID = videos.id) as plays, (SELECT name FROM videowebsites JOIN websites ON videowebsites.websiteID = websites.id WHERE videoID = videos.id) as website FROM videos WHERE id = :videoID LIMIT 1',
+					{ videoID: id }
+				)
+			)[0]
 
 			// Ignore StarAge
 			delete video.starAge
@@ -193,11 +165,6 @@ export default async (fastify: FastifyInstance) => {
 				dash: `${video.path.split('.').slice(0, -1).join('.')}/playlist.mpd`
 			}
 
-			const result = await db.query('SELECT COUNT(*) as plays FROM plays WHERE videoID = :videoID', {
-				videoID: id
-			})
-			video.plays = result[0].plays
-
 			video.locations = await db.query(
 				'SELECT locations.name, videolocations.id FROM videolocations JOIN locations ON videolocations.locationID = locations.id WHERE videoID = :videoID',
 				{ videoID: id }
@@ -208,17 +175,13 @@ export default async (fastify: FastifyInstance) => {
 				{ videoID: id }
 			)
 
-			const website = await db.query(
-				'SELECT name FROM videowebsites JOIN websites ON videowebsites.websiteID = websites.id WHERE videoID = :videoID LIMIT 1',
-				{ videoID: id }
-			)
-			video.website = website[0].name
-
-			const site = await db.query(
+			const site = (
+				await db.query(
 				'SELECT name FROM videosites JOIN sites ON videosites.siteID = sites.id WHERE videoID = :videoID LIMIT 1',
 				{ videoID: id }
 			)
-			video.subsite = site[0] ? site[0].name : null
+			)[0]
+			video.subsite = site ? site.name : null
 
 			// Get NextID
 			let nextIDs: any[] = []
@@ -244,19 +207,14 @@ export default async (fastify: FastifyInstance) => {
 	fastify.get(
 		'/:id/star',
 		handler(async (db, { id }) => {
-			const stars = await db.query(
-				'SELECT stars.id, stars.name, stars.image, COALESCE(starAge * 365, DATEDIFF(videos.date, stars.birthdate)) AS ageInVideo FROM stars JOIN videostars ON stars.id = videostars.starID JOIN videos ON videostars.videoID = videos.id WHERE videostars.videoID = :videoID LIMIT 1',
+			const star = (
+				await db.query(
+					'SELECT stars.id, stars.name, stars.image, COALESCE(starAge * 365, DATEDIFF(videos.date, stars.birthdate)) AS ageInVideo, (SELECT COUNT(*) as total FROM videostars WHERE starID = stars.id) as numVideos FROM stars JOIN videostars ON stars.id = videostars.starID JOIN videos ON videostars.videoID = videos.id WHERE videostars.videoID = :videoID LIMIT 1',
 				{ videoID: id }
 			)
+			)[0]
 
-			if (stars[0]) {
-				const star = stars[0]
-
-				const result = await db.query('SELECT COUNT(*) AS total FROM videostars WHERE starID = :starID', {
-					starID: star.id
-				})
-				star.numVideos = result[0].total
-
+			if (star) {
 				return star
 			} else {
 				throw new Error('Video does not have any star')
@@ -274,51 +232,28 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			// Get StarID
-			let stars = await db.query('SELECT id, image FROM stars WHERE name = :star', { star: name })
-			if (!stars[0]) {
-				// Create New STAR
-				await db.query('INSERT INTO stars(name) VALUES(:star)', { star: name })
+			let starID
+			if (!(await aliasExists(db, name))) {
+				await db.query('INSERT INTO stars(name) VALUES(:star)', { star: name }).catch(() => {})
 
-				// Get StarID
-				stars = await db.query('SELECT id, image FROM stars WHERE name = :star LIMIT 1', { star: name })
+				starID = (await db.query('SELECT id, image FROM stars WHERE name = :star LIMIT 1', { star: name }))[0]
+					.id
+			} else {
+				starID = await getAliasAsStarID(db, name)
 			}
 
-			const starID = stars[0].id
-			// Check if VIDEOSTAR Exists for current VIDEO
-			const result = await db.query(
-				'SELECT COUNT(*) as total FROM videostars WHERE starID = :starID AND videoID = :videoID LIMIT 1',
-				{
-					starID,
-					videoID: id
-				}
-			)
-			if (!result[0].total) {
 				// Insert VIDEOSTAR into table
 				await db.query('INSERT INTO videostars(starID, videoID) VALUES(:starID, :videoID)', {
 					videoID: id,
 					starID
 				})
 
-				const stars = await db.query(
-					'SELECT stars.id, stars.name, stars.image, COALESCE(starAge * 365, DATEDIFF(videos.date, stars.birthdate)) AS ageInVideo FROM stars JOIN videostars ON stars.id = videostars.starID JOIN videos ON videostars.videoID = videos.id WHERE videostars.videoID = :videoID LIMIT 1',
+			return (
+				await db.query(
+					'SELECT stars.id, stars.name, stars.image, COALESCE(starAge * 365, DATEDIFF(videos.date, stars.birthdate)) AS ageInVideo, (SELECT COUNT(*) FROM videostars WHERE starID = stars.id) as numVideos FROM stars JOIN videostars ON stars.id = videostars.starID JOIN videos ON videostars.videoID = videos.id WHERE videostars.videoID = :videoID LIMIT 1',
 					{ videoID: id }
 				)
-				if (stars[0]) {
-					const star = stars[0]
-
-					const result = await db.query('SELECT COUNT(*) AS total FROM videostars WHERE starID = :starID', {
-						starID: star.id
-					})
-					star.numVideos = result[0].total
-
-					return star
-				} else {
-					throw new Error('Could not read StarData from database')
-				}
-			} else {
-				throw new Error('Star already exists')
-			}
+			)[0]
 		})
 	)
 

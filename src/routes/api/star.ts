@@ -7,6 +7,7 @@ import { generateStarName } from '../../generate'
 
 import handler from '../../middleware/handler'
 import schemaHandler from '../../middleware/schema'
+import { starExists } from '../../helper.db'
 
 export default async (fastify: FastifyInstance) => {
 	fastify.get(
@@ -80,7 +81,7 @@ export default async (fastify: FastifyInstance) => {
 		handler(async (db) => {
 			// STARS
 			const missingImages: any[] = await db.query(
-				'SELECT id, name, image FROM stars WHERE image IS NULL OR (breast IS NULL AND eyecolor IS NULL AND haircolor IS NULL AND ethnicity IS NULL AND country IS NULL AND birthdate IS NULL AND height IS NULL AND weight IS NULL AND start IS NULL and end IS NULL) OR autoTaggerIgnore = TRUE'
+				'SELECT id, name, image FROM stars WHERE image IS NULL OR (breast IS NULL AND eyecolor IS NULL AND haircolor IS NULL AND ethnicity IS NULL AND country IS NULL AND birthdate IS NULL AND height IS NULL AND weight IS NULL) OR autoTaggerIgnore = TRUE'
 			)
 
 			const stars = missingImages.map((star) => ({ id: star.id, name: star.name, image: star.image }))
@@ -98,8 +99,8 @@ export default async (fastify: FastifyInstance) => {
 
 				// Check if star is already defined
 				// USE /generate/thumb instead
-				const result = await db.query('SELECT COUNT(*) as total FROM stars WHERE name = :star', { star })
-				if (!result[0].total) {
+				const result = (await db.query('SELECT COUNT(*) as total FROM stars WHERE name = :star', { star }))[0]
+				if (!result.total) {
 					missing.push({ videoID: video.id, name: star })
 				}
 			}
@@ -116,10 +117,8 @@ export default async (fastify: FastifyInstance) => {
 	fastify.get(
 		'/:id',
 		handler(async (db, { id }) => {
-			const stars = await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID: id })
-			if (stars[0]) {
-				const star = stars[0]
-
+			const star = (await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID: id }))[0]
+			if (star) {
 				star.ignored = star.autoTaggerIgnore
 				delete star.autoTaggerIgnore
 
@@ -164,7 +163,7 @@ export default async (fastify: FastifyInstance) => {
 	fastify.put(
 		'/:id',
 		handler(async (db, { id }, body) => {
-			const value = schemaHandler(
+			const { name, label, value, ignore } = schemaHandler(
 				Joi.object({
 					name: Joi.string(),
 					label: Joi.string(),
@@ -176,21 +175,15 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			if ('name' in value) {
-				const { name } = value
-
-				const result = await db.query('SELECT COUNT(*) as total FROM stars WHERE name = :name', { name })
-				if (!result[0].total) {
+			if (name !== undefined) {
 					await db.query('UPDATE stars SET name = :name WHERE id = :starID', { name, starID: id })
-				}
-			} else if ('label' in value) {
+			} else if (label !== undefined) {
 				// TODO make code more readable
 				// reusing multiple variables
 				// some are not necessary
 				// some are being checked in reactJS
 
-				const { label } = value
-				let data = value.value
+				let data = value
 				let content = null
 
 				// ALWAYS refresh page when changing AGE!
@@ -203,19 +196,22 @@ export default async (fastify: FastifyInstance) => {
 				} else {
 					const valueRef = data
 
-					if (label === 'breast') {
+					switch (label) {
+						case 'breast':
 						data = formatBreastSize(data)
 						reload = valueRef !== data
-					} else if (label === 'birthdate') {
+							break
+						case 'birthdate':
 						data = formatDate(data, true)
-					} else if (label === 'country') {
+							break
+						case 'country':
 						data = valueRef
-
 						content = {
 							name: valueRef,
 							code: await getCountryCode(db, valueRef)
 						}
-					} else {
+							break
+						default:
 						data = valueRef
 					}
 
@@ -227,14 +223,54 @@ export default async (fastify: FastifyInstance) => {
 					content: content ? content : data,
 					similar: await getSimilarStars(db, id)
 				}
-			} else if ('ignore' in value) {
+			} else if (ignore != undefined) {
 				await db.query('UPDATE stars SET autoTaggerIgnore = :ignore WHERE id = :starID', {
-					ignore: value.ignore,
+					ignore,
 					starID: id
 				})
 
-				const star = await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID: id })
-				return star[0]
+				return (await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID: id }))[0]
+			}
+		})
+	)
+
+	// add starAlias (with name)
+	fastify.post(
+		'/:id/alias',
+		handler(async (db, { id }, body) => {
+			const { alias } = schemaHandler(
+				Joi.object({
+					alias: Joi.string().required()
+				}),
+				body
+			)
+
+			if (alias !== undefined) {
+				if (!(await starExists(db, alias))) {
+					await db.query('INSERT INTO staralias(starID, name) VALUES(:starID, :alias)', {
+						starID: id,
+						alias
+					})
+				} else {
+					throw new Error('Star already exists')
+				}
+			}
+		})
+	)
+
+	// remove starAlias (from name)
+	fastify.delete(
+		'/:id/alias',
+		handler(async (db, { id }, body) => {
+			const { alias } = schemaHandler(
+				Joi.object({
+					alias: Joi.string().required()
+				}),
+				body
+			)
+
+			if (alias !== undefined) {
+				await db.query('DELETE FROM staralias WHERE alias = :alias AND starID = :starID', { alias, starID: id })
 			}
 		})
 	)
@@ -242,13 +278,8 @@ export default async (fastify: FastifyInstance) => {
 	fastify.delete(
 		'/:id',
 		handler(async (db, { id }) => {
-			const result = await db.query('SELECT COUNT(*) as total FROM videostars WHERE starID = :starID', {
-				starID: id
-			})
-			if (!result[0].total) {
 				await db.query('DELETE FROM stars WHERE id = :starID', { starID: id })
-				await db.query('DELETE FROM staralias WHERE starID = :starID', { starID: id })
-			}
+			// No need to delete related tables, they will be automatically removed
 		})
 	)
 
@@ -264,14 +295,20 @@ export default async (fastify: FastifyInstance) => {
 
 	fastify.post(
 		'/:id/freeones',
-		handler(async (db, { id }) => {
-			const profileLink = await getProfileLink(db, id)
+		handler(async (db, { id }, body) => {
+			const { star } = schemaHandler(
+				Joi.object({
+					star: Joi.string()
+				}),
+				body
+			)
+
+			const profileLink = await getProfileLink(db, id, star)
 			if (profileLink) {
 				const info = await getProfileData(profileLink)
 
 				if (info) {
-					const star = await db.query('SELECT * FROM stars WHERE id = :starID', { starID: id })
-					const starDetails = star[0]
+					const starDetails = (await db.query('SELECT * FROM stars WHERE id = :starID', { starID: id }))[0]
 
 					if (!starDetails.birthdate && info.birthdate) {
 						await setProfileData(db, id, 'birthdate', info.birthdate)

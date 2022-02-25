@@ -4,7 +4,7 @@ import Joi from 'joi'
 import fs from 'fs'
 import rimraf from 'rimraf'
 
-import { noExt, dirOnly, removeThumbnails, isNewDate, formatDate, getResizedThumb } from '../../helper'
+import { noExt, dirOnly, removeThumbnails, isNewDate, formatDate, getResizedThumb, extOnly } from '../../helper'
 import { generateDate, generateTitle, generateSite } from '../../generate'
 import { getWebsiteID, getSiteID } from '../../helper.db'
 
@@ -64,7 +64,7 @@ export default async (fastify: FastifyInstance) => {
 	fastify.put(
 		'/:id',
 		handler(async (db, { id }, body) => {
-			const value = schemaHandler(
+			const { path, date } = schemaHandler(
 				Joi.object({
 					path: Joi.string(),
 					date: Joi.boolean()
@@ -72,39 +72,33 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			if ('path' in value) {
-				const newPath = value.path
-
-				const result = await db.query('SELECT COUNT(*) as total FROM videos WHERE path = :path LIMIT 1', {
-					path: newPath
+			if (path !== undefined) {
+				const oldPath = (
+					await db.query('SELECT path FROM videos WHERE id = :videoID LIMIT 1', { videoID: id })
+				)[0].path
+				if (oldPath) {
+					await db
+						.query('UPDATE videos SET path = :newPath WHERE id = :videoID', {
+							newPath: path,
+							videoID: id
 				})
-				if (!result[0].total) {
-					const video = await db.query('SELECT path FROM videos WHERE id = :videoID LIMIT 1', { videoID: id })
-					if (video[0].path) {
-						const oldPath = video[0].path
-
+						.then(() => {
 						// Rename File
-						fs.renameSync(`./public/videos/${oldPath}`, `./public/videos/${newPath}`)
-						fs.renameSync(`./public/videos/${noExt(oldPath)}`, `./public/videos/${noExt(newPath)}`)
+							fs.renameSync(`./public/videos/${oldPath}`, `./public/videos/${path}`)
+							fs.renameSync(`./public/videos/${noExt(oldPath)}`, `./public/videos/${noExt(path)}`)
+						})
 
 						// Update Database
-						await db.query('UPDATE videos SET path = :newPath WHERE id = :videoID', {
-							newPath,
-							videoID: id
-						})
 					} else {
 						throw new Error('Invalid videoID')
 					}
-				} else {
-					throw new Error('File already exists')
-				}
-			} else if ('date' in value) {
-				const videos = await db.query('SELECT path, date FROM videos WHERE id = :videoID LIMIT 1', {
+			} else if (date !== undefined) {
+				const video = (
+					await db.query('SELECT path, date FROM videos WHERE id = :videoID LIMIT 1', {
 					videoID: id
 				})
-				if (videos[0]) {
-					const video = videos[0]
-
+				)[0]
+				if (video) {
 					const { path, date } = video
 					const fileDate = generateDate(path)
 
@@ -115,12 +109,14 @@ export default async (fastify: FastifyInstance) => {
 						})
 					}
 
-					const stars = await db.query(
+					const stars = (
+						await db.query(
 						'SELECT COALESCE(starAge * 365, DATEDIFF(videos.date, stars.birthdate)) AS ageInVideo FROM stars JOIN videostars ON stars.id = videostars.starID JOIN videos ON videostars.videoID = videos.id WHERE videostars.videoID = :videoID LIMIT 1',
 						{ videoID: id }
 					)
+					)[0]
 
-					return { date: formatDate(fileDate), age: stars[0].ageInVideo }
+					return { date: formatDate(fileDate), age: stars.ageInVideo }
 				} else {
 					throw new Error('Invalid videoID')
 				}
@@ -139,32 +135,21 @@ export default async (fastify: FastifyInstance) => {
 	fastify.delete(
 		'/:id',
 		handler(async (db, { id }) => {
-			const video = await db.query('SELECT path FROM videos WHERE id = :videoID LIMIT 1', { videoID: id })
-			if (video[0].path) {
-				const videoPath = video[0].path
+			const video = (await db.query('SELECT path FROM videos WHERE id = :videoID LIMIT 1', { videoID: id }))[0]
+			if (video.path) {
+				const videoPath = video.path
 				const hlsDir = noExt(videoPath)
 
-				const result = await db.query(
-					'SELECT COUNT(*) as total FROM videostars WHERE videoID = :videoID LIMIT 1',
-					{
-						videoID: id
-					}
-				)
-				if (!result[0].total) {
-					await db.query('DELETE FROM videos WHERE id = :videoID', { videoID: id })
-					await db.query('DELETE FROM videosites WHERE videoID = :videoID', { videoID: id })
-					await db.query('DELETE FROM videowebsites WHERE videoID = :videoID', { videoID: id })
-					await db.query('DELETE FROM videoattributes WHERE videoID = :videoID', { videoID: id })
-					await db.query('DELETE FROM videolocations WHERE videoID = :videoID', { videoID: id })
-					await db.query('DELETE FROM plays WHERE videoID = :videoID', { videoID: id })
-
+				// No need to delete related tables, they will be automatically removed
+				await db.query('DELETE FROM videos WHERE id = :videoID', { videoID: id }).then(() => {
 					removeThumbnails(id)
 
+					// remove video-file
 					fs.unlink(`./public/videos/${videoPath}`, () => {})
+
+					// remove stream-files
 					rimraf(`./public/videos/${hlsDir}`, () => {})
-				} else {
-					throw 'Please remove the star from the video first'
-				}
+				})
 			} else {
 				throw new Error('Invalid videoID')
 			}
@@ -194,7 +179,11 @@ export default async (fastify: FastifyInstance) => {
 						const filePath = `${dirPath}/${file}`
 
 						const dir = dirOnly(dirPath)
-						if (!filesArr.includes(`${dir}/${file}`) && (await fs.promises.lstat(filePath)).isFile()) {
+						if (
+							!filesArr.includes(`${dir}/${file}`) &&
+							(await fs.promises.lstat(filePath)).isFile() &&
+							extOnly(filePath) === '.mp4' // Prevent random files from being imported!
+						) {
 							newFiles.push({
 								path: `${dir}/${file}`,
 								website: dir,
@@ -207,7 +196,8 @@ export default async (fastify: FastifyInstance) => {
 				}
 			}
 
-			return newFiles.slice(0, 30)
+			const newFilesSliced = newFiles.slice(0, 30)
+			return { files: newFilesSliced, pages: Math.ceil(newFiles.length / newFilesSliced.length) }
 		})
 	)
 
@@ -223,5 +213,15 @@ export default async (fastify: FastifyInstance) => {
 		handler(async ({}, { id }) => {
 			return fs.createReadStream(`./public/images/videos/${await getResizedThumb(id)}`)
 		})
+	)
+
+	fastify.get(
+		'/:id/vtt',
+		handler(async (_db, { id }) => fs.createReadStream(`./public/vtt/${id}.vtt`))
+	)
+
+	fastify.get(
+		'/:id/vtt/thumb',
+		handler(async (_db, { id }) => fs.createReadStream(`./public/vtt/${id}.jpg`))
 	)
 }

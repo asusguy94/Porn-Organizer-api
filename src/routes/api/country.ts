@@ -20,17 +20,9 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-			const result = await db.query('SELECT COUNT(*) as total FROM country WHERE name = :country LIMIT 1', {
-				country: name
-			})
-
-			if (!result[0].total) {
 				await db.query('INSERT INTO country(name, code) VALUES(:country, 0)', {
 					country: name
 				})
-			} else {
-				throw new Error('Country already exists')
-			}
 		})
 	)
 
@@ -59,10 +51,11 @@ export default async (fastify: FastifyInstance) => {
 				throw new Error(`label=${label},value=${value} is not allowed with length=${value.length}`)
 			}
 
-			const result = await db.query('SELECT name, code FROM country WHERE id = :countryID LIMIT 1', {
+			return (
+				await db.query('SELECT name, code FROM country WHERE id = :countryID LIMIT 1', {
 				countryID: id
 			})
-			return result[0]
+			)[0]
 		})
 	)
 }
