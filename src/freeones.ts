@@ -43,10 +43,6 @@ const getProfileData_alias = async (url: string) => {
 
 	const $personalInfo = $('[data-test="section-personal-information"] > div')
 	const $appearance = $('.profile-meta-item > .profile-meta-list')
-	const $startEnd = $('.timeline-horizontal > div:first-of-type > p')
-
-	const start = $startEnd.first().text().trim().toLowerCase()
-	const end = $startEnd.last().text().trim().toLowerCase()
 
 	const $birthdateRef: any = $personalInfo.find('p:first-of-type > a[href*="dateOfBirth"]')
 
@@ -55,8 +51,6 @@ const getProfileData_alias = async (url: string) => {
 		birthdate: $birthdateRef.length ? $birthdateRef.attr('href').split('=')[1].trim() : null,
 		country: $('[data-test="link-country"]').text().trim(),
 		ethnicity: $('[data-test="link_span_ethnicity"]').text().trim(),
-		start: start === 'begin' ? '' : start,
-		end: end === 'now' ? '' : end,
 
 		appearance: {
 			eyecolor: $appearance.find('[data-test="link_eye_color"]').text().trim(),

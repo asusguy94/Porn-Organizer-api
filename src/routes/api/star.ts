@@ -136,9 +136,7 @@ export default async (fastify: FastifyInstance) => {
 					// Items without autocomplete
 					birthdate: star.birthdate ? formatDate(star.birthdate, true) : '',
 					height: String(star.height || ''),
-					weight: String(star.weight || ''),
-					start: String(star.start || ''),
-					end: String(star.end || '')
+					weight: String(star.weight || '')
 				}
 				delete star.haircolor
 				delete star.eyecolor
@@ -148,8 +146,6 @@ export default async (fastify: FastifyInstance) => {
 				delete star.birthdate
 				delete star.height
 				delete star.weight
-				delete star.start
-				delete star.end
 
 				star.similar = await getSimilarStars(db, id)
 
@@ -322,14 +318,6 @@ export default async (fastify: FastifyInstance) => {
 						await setProfileData(db, id, 'ethnicity', info.ethnicity)
 					}
 
-					if (!starDetails.start && info.start) {
-						await setProfileData(db, id, 'start', info.start)
-					}
-
-					if (!starDetails.end && info.end) {
-						await setProfileData(db, id, 'end', info.end)
-					}
-
 					if (Object.keys(info.appearance).length) {
 						const appearance = info.appearance
 
@@ -362,7 +350,7 @@ export default async (fastify: FastifyInstance) => {
 		'/:id/freeones',
 		handler(async (db, { id }) => {
 			await db.query(
-				'UPDATE stars SET haircolor = NULL, eyecolor = NULL, breast = NULL, ethnicity = NULL, country = NULL, birthdate = NULL, height = NULL, height = NULL, weight = NULL, start = NULL, end = NULL WHERE id = :starID',
+				'UPDATE stars SET haircolor = NULL, eyecolor = NULL, breast = NULL, ethnicity = NULL, country = NULL, birthdate = NULL, height = NULL, height = NULL, weight = NULL WHERE id = :starID',
 				{ starID: id }
 			)
 		})

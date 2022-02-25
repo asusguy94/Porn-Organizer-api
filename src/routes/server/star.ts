@@ -31,9 +31,9 @@ export default async (fastify: FastifyInstance) => {
 	fastify.delete(
 		'/:id/image',
 		handler(async (db, { id }) => {
-			const result = await db.query('SELECT image FROM stars WHERE id = :starID LIMIT 1', { starID: id })
-			if (result[0].image) {
-				const path = `images/stars/${result[0].image}`
+			const result = (await db.query('SELECT image FROM stars WHERE id = :starID LIMIT 1', { starID: id }))[0]
+			if (result.image) {
+				const path = `images/stars/${result.image}`
 
 				await db.query('UPDATE stars SET image = NULL WHERE id = :starID', { starID: id })
 

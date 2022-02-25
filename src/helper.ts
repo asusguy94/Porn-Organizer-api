@@ -233,8 +233,6 @@ export const getSimilarStars = async (db: any, starID: number, maxMaxLength = 9)
 				otherStar.match -= match_important
 			if (currentStar['height'] && otherStar['height'] !== currentStar['height']) otherStar.match -= match_default
 			if (currentStar['weight'] && otherStar['weight'] !== currentStar['weight']) otherStar.match -= match_default
-			if (currentStar['start'] && otherStar['start'] !== currentStar['start']) otherStar.match -= match_default
-			if (currentStar['end'] && otherStar['end'] !== currentStar['end']) otherStar.match -= match_default
 			if (currentStar['birthdate'] && otherStar['birthdate']) {
 				const now = dayjs()
 
