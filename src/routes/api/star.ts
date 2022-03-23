@@ -22,6 +22,7 @@ export default async (fastify: FastifyInstance) => {
 					code: string
 					name: string
 				}[]
+				websites: string[]
 			}
 
 			// Define Structure
@@ -30,7 +31,8 @@ export default async (fastify: FastifyInstance) => {
 				eyecolor: [],
 				haircolor: [],
 				ethnicity: [],
-				country: []
+				country: [],
+				websites: []
 			}
 
 			// Queries
@@ -48,6 +50,7 @@ export default async (fastify: FastifyInstance) => {
 			// TODO skips over any country-value with NULL
 			// Either if the country-code relation does not exist (THIS SHOULD NOT BE SKIPPED)
 			// Or if the country-field is empty (THIS SHOULD BE SKIPPED)
+			const websites = await db.query('SELECT name as website FROM websites')
 
 			// Map Data
 			data.breast = breast.map(({ breast }: { breast: string }) => breast)
@@ -55,6 +58,7 @@ export default async (fastify: FastifyInstance) => {
 			data.haircolor = haircolor.map(({ haircolor }: { haircolor: string }) => haircolor)
 			data.ethnicity = ethnicity.map(({ ethnicity }: { ethnicity: string }) => ethnicity)
 			data.country = country.map(({ code, name }: { code: string; name: string }) => ({ code, name }))
+			data.websites = websites.map(({ website }: { website: string }) => website)
 
 			return data
 		})
@@ -119,37 +123,26 @@ export default async (fastify: FastifyInstance) => {
 		handler(async (db, { id }) => {
 			const star = (await db.query('SELECT * FROM stars WHERE id = :starID LIMIT 1', { starID: id }))[0]
 			if (star) {
-				star.ignored = star.autoTaggerIgnore
-				delete star.autoTaggerIgnore
+				return {
+					ignored: star.autoTaggerIgnore,
+					info: {
+						breast: star.breast,
+						eyecolor: star.eyecolor,
+						haircolor: star.haircolor,
+						ethnicity: star.ethnicity,
 
-				star.info = {
-					breast: star.breast,
-					eyecolor: star.eyecolor,
-					haircolor: star.haircolor,
-					ethnicity: star.ethnicity,
+						country: {
+							name: star.country,
+							code: await getCountryCode(db, star.country)
+						},
 
-					country: {
-						name: star.country,
-						code: await getCountryCode(db, star.country)
+						// Items without autocomplete
+						birthdate: star.birthdate ? formatDate(star.birthdate, true) : '',
+						height: String(star.height || ''),
+						weight: String(star.weight || '')
 					},
-
-					// Items without autocomplete
-					birthdate: star.birthdate ? formatDate(star.birthdate, true) : '',
-					height: String(star.height || ''),
-					weight: String(star.weight || '')
+					similar: await getSimilarStars(db, id)
 				}
-				delete star.haircolor
-				delete star.eyecolor
-				delete star.breast
-				delete star.ethnicity
-				delete star.country
-				delete star.birthdate
-				delete star.height
-				delete star.weight
-
-				star.similar = await getSimilarStars(db, id)
-
-				return star
 			} else {
 				throw new Error('Star does not exist')
 			}
@@ -172,7 +165,7 @@ export default async (fastify: FastifyInstance) => {
 			)
 
 			if (name !== undefined) {
-					await db.query('UPDATE stars SET name = :name WHERE id = :starID', { name, starID: id })
+				await db.query('UPDATE stars SET name = :name WHERE id = :starID', { name, starID: id })
 			} else if (label !== undefined) {
 				// TODO make code more readable
 				// reusing multiple variables
@@ -194,21 +187,21 @@ export default async (fastify: FastifyInstance) => {
 
 					switch (label) {
 						case 'breast':
-						data = formatBreastSize(data)
-						reload = valueRef !== data
+							data = formatBreastSize(data)
+							reload = valueRef !== data
 							break
 						case 'birthdate':
-						data = formatDate(data, true)
+							data = formatDate(data, true)
 							break
 						case 'country':
-						data = valueRef
-						content = {
-							name: valueRef,
-							code: await getCountryCode(db, valueRef)
-						}
+							data = valueRef
+							content = {
+								name: valueRef,
+								code: await getCountryCode(db, valueRef)
+							}
 							break
 						default:
-						data = valueRef
+							data = valueRef
 					}
 
 					await db.query(`UPDATE stars SET ${label} = :value WHERE id = :starID`, { value: data, starID: id })
@@ -274,7 +267,7 @@ export default async (fastify: FastifyInstance) => {
 	fastify.delete(
 		'/:id',
 		handler(async (db, { id }) => {
-				await db.query('DELETE FROM stars WHERE id = :starID', { starID: id })
+			await db.query('DELETE FROM stars WHERE id = :starID', { starID: id })
 			// No need to delete related tables, they will be automatically removed
 		})
 	)

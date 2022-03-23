@@ -45,6 +45,7 @@ export const noExt = (dir: string) => {
 export const removeThumbnails = async (videoID: number) => {
 	// Remove Images
 	fs.unlink(`./public/images/videos/${videoID}.jpg`, () => {})
+	//TODO this method stops working if this setting is changed
 	fs.unlink(`./public/images/videos/${videoID}-${await getSetting('thumbnail_res')}.jpg`, () => {})
 
 	// Remove Previews

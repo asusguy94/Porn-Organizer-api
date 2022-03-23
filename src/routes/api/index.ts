@@ -9,6 +9,7 @@ import locationRoute from './location'
 import bookmarkRoute from './bookmark'
 import searchRoute from './search'
 import websiteRoute from './website'
+import siteRoute from './site'
 import countryRoute from './country'
 
 export default async (fastify: FastifyInstance) => {
@@ -21,5 +22,6 @@ export default async (fastify: FastifyInstance) => {
 	fastify.register(bookmarkRoute, { prefix: 'bookmark' })
 	fastify.register(searchRoute, { prefix: 'search' })
 	fastify.register(websiteRoute, { prefix: 'website' })
+	fastify.register(siteRoute, { prefix: 'site' })
 	fastify.register(countryRoute, { prefix: 'country' })
 }

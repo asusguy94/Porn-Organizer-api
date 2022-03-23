@@ -20,9 +20,9 @@ export default async (fastify: FastifyInstance) => {
 				body
 			)
 
-				await db.query('INSERT INTO locations(name) VALUES(:location)', {
-					location: name
-				})
+			await db.query('INSERT INTO locations(name) VALUES(:location)', {
+				location: name
+			})
 		})
 	)
 

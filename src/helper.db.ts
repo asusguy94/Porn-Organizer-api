@@ -19,9 +19,9 @@ export const getStarID = async (db: any, star: string) => {
 export const getAliasAsStarID = async (db: any, alias: string) => {
 	const stars = (
 		await db.query(
-		'SELECT stars.id FROM stars JOIN staralias ON staralias.starID = stars.id WHERE staralias.name = :alias GROUP BY staralias.id',
-		{ alias }
-	)
+			'SELECT stars.id FROM stars JOIN staralias ON staralias.starID = stars.id WHERE staralias.name = :alias GROUP BY staralias.id',
+			{ alias }
+		)
 	)[0]
 
 	return stars ? stars.id : null
@@ -30,8 +30,8 @@ export const getAliasAsStarID = async (db: any, alias: string) => {
 export const getIgnoredStar = async (db: any, star: string) => {
 	const stars = (
 		await db.query('SELECT id FROM stars WHERE name = :star AND autoTaggerIgnore = TRUE LIMIT 1', {
-		star
-	})
+			star
+		})
 	)[0]
 
 	return stars ? stars.id : null
@@ -40,8 +40,8 @@ export const getIgnoredStar = async (db: any, star: string) => {
 export const getIgnoredStarID = async (db: any, starID: number) => {
 	const stars = (
 		await db.query('SELECT id FROM stars WHERE id = :starID AND autoTaggerIgnore = TRUE LIMIT 1', {
-		starID
-	})
+			starID
+		})
 	)[0]
 
 	return stars ? stars.id : null
